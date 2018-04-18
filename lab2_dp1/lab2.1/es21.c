@@ -29,8 +29,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "errlib.h"
-#include "sockwrap.h"
+#include "../errlib.h"
+#include "../sockwrap.h"
 
 #define SIZE 31
 
@@ -56,11 +56,14 @@ int main(int argc,char** argv){
 
     fd_set read_set;
     struct timeval tv;
-    int times=10;
+    int times=3;
     //to manage select
 
     socklen_t  saddrlen;
     //to manage recvfrom
+
+    //
+    int flag=1;
 
     prog_name=argv[0];
 
@@ -93,18 +96,25 @@ int main(int argc,char** argv){
 
 
     int s1;
+    while(flag==1){
+        printf("Trying to contact server %s:%s\n",argv[1],argv[2]);
     if(Select(sock+1,&read_set,NULL,NULL,&tv)>0){
-        if(FD_ISSET(sock,&read_set)){
+       /* if(FD_ISSET(sock,&read_set)){
             s1=sock;
+        }*/
+        Recvfrom(sock, buffer, SIZE, 0, (struct sockaddr*) &saddr, /*(socklen_t*)sizeof(saddr)*/ &saddrlen);
+        printf("Message %s received from %s:%s in %d seconds\n",message,argv[1],argv[2],(int)tv.tv_sec);
+        flag=0;
         }
         else{
-            printf("This if else has no pratical sense, it's just didattical\n");
+            printf("No message from %d in %d seconds\n",sock,times);
+            Sendto(sock,argv[3],sizeof(argv[3]),0,(struct sockaddr*) &saddr,sizeof(saddr));
+            printf("Message %s sent to %s:%s\n",message,argv[1],argv[2]);
+            tv.tv_sec=times;
+            tv.tv_usec=0;
+            FD_ZERO(&read_set);
+            FD_SET(sock,&read_set);
         }
-        Recvfrom(s1, buffer, SIZE, 0, (struct sockaddr*) &saddr, /*(socklen_t*)sizeof(saddr)*/ &saddrlen);
-        printf("Message %s received from %s:%s in %d seconds\n",message,argv[1],argv[2],(int)tv.tv_sec);
-    }
-    else{
-        printf("No message from %d in %d seconds",sock,times);
     }
 
 
@@ -113,3 +123,4 @@ int main(int argc,char** argv){
     free(message);
     return 0;
 }
+//TO DO: Correct number of seconds
