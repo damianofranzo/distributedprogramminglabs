@@ -18,11 +18,14 @@ char* prog_name;
 int main(int argc,char** argv) {
 
     Circbuff c;
-    if (1) {
+   /* if (1) {
         c=cirbuff_cinit(10);
         circbuff_destroy(c);
 
-    } else {
+    } else {*/
+
+   c=cirbuff_cinit(10);
+
         if (argc != 2) {
             printf("Usage:program port");
             return -1;
@@ -35,6 +38,8 @@ int main(int argc,char** argv) {
         char buffer[BUFFSIZE];
         int nrbyte;
 
+
+        struct sockaddr_in scaddr;
         socklen_t saddrlen;
 
         signal(SIGINT, unlock);
@@ -48,18 +53,21 @@ int main(int argc,char** argv) {
 
         while (flag) {
             //handle udp service
-            nrbyte = (int) Recvfrom(sock, buffer, BUFFSIZE, 0, (struct sockaddr *) &saddr, &saddrlen);
+            nrbyte = (int) Recvfrom(sock, buffer, BUFFSIZE, 0, (struct sockaddr *) &scaddr, &saddrlen);
             fprintf(stdout, "message %s sent\n", buffer);
-            Sendto(sock, buffer, nrbyte, 0, (struct sockaddr *) &saddr, sizeof(saddr));
+            if(searchinsert(c,inet_ntoa(scaddr.sin_addr)>3));
+            else
+                Sendto(sock, buffer, nrbyte, 0, (struct sockaddr *) &saddr, sizeof(saddr));
             //printf("what the hell is going on?!?\n\n%s",buffer);
 
         }
 
         printf("exit from the loop safely\n");
         Close(sock);
+        circbuff_destroy(c);
 
         return 1;
-    }
+
 }
 
 void unlock(int signum){
