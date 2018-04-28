@@ -29,23 +29,20 @@
 #define PROT_ERR_MSG "-ERR\r\n"
 #define PROT_ERR_MSG_LEN 6
 
+#define SERV_ERR 1
 
-//#define BUFF_SIZE 1400
+#define MYBUFSIZE 1400
 
 
 /*To do:
  * good stdout
- * wrap into functions
- * use more marco
- * send file on 2mb at time
- * good numbers
  * */
 
 char *prog_name;
 
 int getmessage(char *buffer);
 int getfilename(char *buf,char *filename,int request_size);
-int long_to_string(char *stringl, int size);
+int sendfilemyprot(int connSock,int fd);
 
 int main (int argc, char *argv[])
 {
@@ -115,138 +112,148 @@ int main (int argc, char *argv[])
 
     while(flag) {
         //Waiting for client connections
-        connection_socket = Accept(listening_socket,(struct sockaddr*) &caddr, &caddrlen);
+        connection_socket = Accept(listening_socket, (struct sockaddr *) &caddr, &caddrlen);
         if (connection_socket < -1) {
             printf("Error in Accept function\n");
             continue;
         }
-        printf("Connetion accepted on %d\n",connection_socket);
-        keep_conn_on=1;
-
-
-
+        printf("Connetion accepted on %d\n", connection_socket);
+        keep_conn_on = 1;
 
 
         while (keep_conn_on) {
             //waiting for commands
-            request_size=(int)Recv(connection_socket, buffer,1000, 0);
-            mess=getmessage(buffer);
-            printf("Buffer received:%s\n",buffer);
+            request_size = (int) Recv(connection_socket, buffer, 1000, 0);
+            mess = getmessage(buffer);
+            printf("Buffer received:%s\n", buffer);
+
             switch (mess) {
                 case PROT_GET:
-                    if(getfilename(buffer,filename,request_size)<0){
+                    if (getfilename(buffer, filename, request_size) < 0) {
                         printf("Request too short,closing connection\n");
-                        keep_conn_on=0;
-                        mess=PROT_ERR;
+                        keep_conn_on = 0;
+                        mess = PROT_ERR;
                         break;
                     }
-                    printf("Client requiring file: %s\n",filename);
+                    printf("Client requiring file: %s\n", filename);
                     //fd=open(filename,"r");
 
                     //get information about file
-                    if(stat(filename,&fileinformation)<0){
+                    if (stat(filename, &fileinformation) < 0) {
                         printf("File not found, closing connection\n");
-                        keep_conn_on=0;
-                        mess=PROT_ERR;
+                        keep_conn_on = 0;
+                        mess = PROT_ERR;
                         break;
                     }
 
                     //i allocate a buffer of the total size of the file plus space for +okb1b2..
-                    file_size=(size_t)fileinformation.st_size;
-                    total_size=file_size+14;
-                    buffer_file=malloc(total_size);
+                    file_size = (size_t) fileinformation.st_size;
+                    total_size = file_size + 14;
+                    buffer_file = malloc(14*sizeof(char));
 
-                   //Reading the file and sending it
-                    fd=open(filename,O_RDONLY);
-                    if(fd<0){
+                    //Reading the file and sending it
+                    fd = open(filename, O_RDONLY);
+                    if (fd < 0) {
                         printf("failed to open file\n");
-                        mess=PROT_ERR;
+                        mess = PROT_ERR;
                         break;
                     }
 
                     //changed in order to send correctly all the file for each mb
-                    if(readn(fd,buffer_file+13,file_size)==file_size)
-                        printf("file read correctly\n");
-                    close(fd);
-                    printf("File Information\nfile:%s\n",buffer_file+13);
 
-                    if(long_to_string(file_size_string,htonl((int)file_size))==-1){
+
+                    file_size = htonl(file_size);
+                    int timestamp = htonl((int) fileinformation.st_mtim.tv_sec);
+
+                    strncpy(buffer_file, "+OK\r\n", 5);
+                    memcpy(buffer_file + 5, &file_size, sizeof(int));
+                    memcpy(buffer_file + 9, &timestamp, sizeof(int));
+
+                    Send(connection_socket, buffer_file,14, 0);
+                    if(sendfilemyprot(connection_socket,fd)<0){
+                        printf("Error in reading file, closing connection\n");
                         keep_conn_on=0;
+                        Close(fd);
                         break;
                     }
-                    file_size=htonl(file_size);
-                    //memcpy(file_size_string,&file_size, sizeof(uint32_t));
-                //    printf("%s\n",file_size_string);
-                  //  printf("%d %d %d %d\n",file_size_string[0],file_size_string[1],file_size_string[2],file_size_string[3]);
-                  //  printf("problem here: %d\n",(int)fileinformation.st_mtim.tv_sec);
-
-                /*    if(long_to_string(time_stamp_string,htonl((int)fileinformation.st_mtim.tv_sec))==-1){
-                        keep_conn_on=0;
-                        break;
-                    }*/
-                    printf("Timestamp: %d\n",fileinformation.st_mtim.tv_sec);
-                    int timestamp=htonl((int)fileinformation.st_mtim.tv_sec);
-                    //memcpy(time_stamp_string,&timestamp, sizeof(uint32_t));
-
-                    //printf("what is this: ...%1s %1s %1s %1s...\n",time_stamp_string,time_stamp_string+1,time_stamp_string+2,time_stamp_string+3);
-                   // printf("%d %d %d %d\n",time_stamp_string[0],time_stamp_string[1],time_stamp_string[2],time_stamp_string[3]);
-
-                    strncpy(buffer_file,"+OK\r\n",5);
-                    memcpy(buffer_file+5,&file_size,sizeof(int));
-                    memcpy(buffer_file+9,&timestamp,sizeof(int));
-
-                    /*Send(connection_socket,&file_size,4,0);
-                    Send(connection_socket,buffer_file,5,0);
-                    Send(connection_socket,&timestamp,4,0);
-                    */
-
-                    Send(connection_socket,buffer_file,total_size,0);
-                    printf("Sending %s\n",buffer_file);
-                    //Send(connection_socket,buffer_file+13,total_size-14,0);
-
-                    printf("File sent successfully\n");
+                    close(fd);
                     break;
+           /*     case PROT_GET:
+                    if (getfilename(buffer, filename, request_size) < 0) {
+                        printf("Request too short,closing connection\n");
+                        keep_conn_on = 0;
+                        mess = PROT_ERR;
+                        break;
+                    }
+                    printf("Client requiring file: %s\n", filename);
+                    //fd=open(filename,"r");
+
+                    //get information about file
+                    if (stat(filename, &fileinformation) < 0) {
+                        printf("File not found, closing connection\n");
+                        keep_conn_on = 0;
+                        mess = PROT_ERR;
+                        break;
+                    }
+
+                    //i allocate a buffer of the total size of the file plus space for +okb1b2..
+                    file_size = (size_t) fileinformation.st_size;
+                    total_size = file_size + 14;
+                    buffer_file = malloc(total_size);
+
+                    //Reading the file and sending it
+                    fd = open(filename, O_RDONLY);
+                    if (fd < 0) {
+                        printf("failed to open file\n");
+                        mess = PROT_ERR;
+                        break;
+                    }
+
+                    //changed in order to send correctly all the file for each mb
+                    if (readn(fd, buffer_file + 13, file_size) == file_size)
+                        printf("file read correctly\n");
+                    close(fd);
+                    printf("File Information\nfile:%s\n", buffer_file + 13);
+
+                    file_size = htonl(file_size);
+                    int timestamp = htonl((int) fileinformation.st_mtim.tv_sec);
+
+                    strncpy(buffer_file, "+OK\r\n", 5);
+                    memcpy(buffer_file + 5, &file_size, sizeof(int));
+                    memcpy(buffer_file + 9, &timestamp, sizeof(int));
+
+                    printf("Sending %s\n", buffer_file);
+                    Send(connection_socket, buffer_file, total_size, 0);
+                    printf("File sent successfully\n");
+                    break;*/
                 case PROT_QUIT:
                     keep_conn_on = 0;
                     printf("Client requested to quit, closing connection\n");
                     break;
-                case PROT_ERR:
-                    printf("Client sent invalid message, closing connection\n");
-                    keep_conn_on=0;
-                    Send(connection_socket,PROT_ERR_MSG,PROT_ERR_MSG_LEN,0);
-                    break;
                 default:
                     printf("Something strange happened\n");
-                    keep_conn_on=0;
+                    mess = PROT_ERR;
+                    keep_conn_on = 0;
             }
 
-            if(mess==PROT_QUIT){
-                keep_conn_on = 0;
-                printf("Client requested to quit, closing connection\n");
-            }
-            else if(mess==PROT_ERR){
+            //if some errors happened
+            if (mess == PROT_ERR) {
                 printf("Client sent invalid message, closing connection\n");
-                keep_conn_on=0;
-                Send(connection_socket,PROT_ERR_MSG,PROT_ERR_MSG_LEN,0);
-                break;
+                keep_conn_on = 0;
+                Send(connection_socket, PROT_ERR_MSG, PROT_ERR_MSG_LEN, 0);
             }
-            else{
-                printf("Something strange happened\n");
-                keep_conn_on=0;
+            if (buffer_file != NULL) {
+                free(buffer_file);
+                buffer_file == NULL;
             }
         }
-        free(buffer_file);
-        buffer_file=NULL;
         Close(connection_socket);
-        if(buffer_file!=NULL)
-            free(buffer_file);
 
         // the endless loop has to be handled
-        i++;
-        if(i==5)
-            flag=0;
-    }
-
+            i++;
+            if (i == 5)
+                flag = 0;
+        }
 
 
     return 0;
@@ -275,18 +282,21 @@ int getfilename(char *buf,char *filename,int request_size){
     return 0;
 }
 
-int long_to_string(char *stringl, int size){
-/*    if(stringl==NULL)
-        return -1;
-    else if (strlen(stringl)<4)
-        return -1;*/
-    //printf("Given size %d\n",size);
-  /*  stringl[0]=(size)&0xff;
-    stringl[1]=(size>>8)&0xff;
-    stringl[2]=(size>>16)&0xff;
-    stringl[3]=(size>>24)&0xff;*/
-
-  memcpy(stringl,&size,4);
-   // printf("%d%d%d%d\n",stringl[0],stringl[1],stringl[2],stringl[3]);
+int sendfilemyprot(int connSock,int fd){
+    int readingSize;
+    char buffer[MYBUFSIZE];
+    while((readingSize=readn(fd, buffer,MYBUFSIZE))>0) {
+        Send(connSock, buffer, readingSize, 0);
+    }
+    if(readingSize==-1)
+        return SERV_ERR;
     return 0;
-};
+}
+
+
+
+
+
+
+
+
