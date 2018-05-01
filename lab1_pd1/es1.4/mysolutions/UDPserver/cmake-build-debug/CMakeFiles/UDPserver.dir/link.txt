@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/UDPserver.dir/errlib.c.o CMakeFiles/UDPserver.dir/es14server.c.o CMakeFiles/UDPserver.dir/sockwrap.c.o  -o UDPserver 

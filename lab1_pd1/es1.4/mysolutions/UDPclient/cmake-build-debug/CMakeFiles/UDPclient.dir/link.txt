@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/UDPclient.dir/es14client.c.o CMakeFiles/UDPclient.dir/errlib.c.o CMakeFiles/UDPclient.dir/sockwrap.c.o  -o UDPclient 

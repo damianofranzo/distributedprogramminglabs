@@ -71,9 +71,6 @@ int main (int argc, char *argv[])
     FILE *fd;
     int n,r,keep_conn_on=1,mess,remaining;
 
-    //temp
-    char file[MYBUFFSIZE];
-
     //for each file given from commandline i sent request and wait for response
     for(int i=3;i<argc;i++) {
         if ((argv[i] == NULL)) {
@@ -117,13 +114,10 @@ int main (int argc, char *argv[])
                             while(remaining>0){
                                 r=Recvfrom(sock, buffer, MYBUFFSIZE, 0, (struct sockaddr *) &from, &fromlen);
                                 printf("buffer %s\n",buffer);
-                                memcpy(file+(filesize-remaining),buffer,r);
                                 remaining-=r;
                                 fwrite(buffer,1,r,fd);
                             }
                             fclose(fd);
-                            //temp
-                            printf("file %s",file);
 
                             break;
                         case PROT_ERR:

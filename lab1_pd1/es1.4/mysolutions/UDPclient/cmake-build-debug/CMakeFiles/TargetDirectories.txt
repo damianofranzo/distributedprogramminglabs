@@ -1,0 +1,3 @@
+/home/danzio/Desktop/programmazione_distribuita/distributedprogramminglabs/lab1_pd1/es1.4/mysolutions/UDPclient/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/danzio/Desktop/programmazione_distribuita/distributedprogramminglabs/lab1_pd1/es1.4/mysolutions/UDPclient/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/danzio/Desktop/programmazione_distribuita/distributedprogramminglabs/lab1_pd1/es1.4/mysolutions/UDPclient/cmake-build-debug/CMakeFiles/UDPclient.dir

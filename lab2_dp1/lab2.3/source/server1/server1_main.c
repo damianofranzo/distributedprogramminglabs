@@ -102,7 +102,7 @@ int main (int argc, char *argv[])
     //variables to handles file transfer
     int fd,timestamp;
     char filename[MYFILENAMESIZE];
-    char *buffer_file=NULL;
+    char buffer_informations[HEADER_LEN];
     struct stat fileinformation;
     size_t file_size,total_size;
 
@@ -149,7 +149,6 @@ int main (int argc, char *argv[])
                     //i allocate a buffer of the size of the first information (+okb1b2..)
                     file_size = (size_t) fileinformation.st_size;
                     total_size = file_size + 13;
-                    buffer_file = malloc(13*sizeof(char));
 
                     //Reading the file and sending it
                     fd = open(filename, O_RDONLY);
@@ -163,11 +162,11 @@ int main (int argc, char *argv[])
                     file_size = htonl(file_size);
                     timestamp = htonl((int) fileinformation.st_mtim.tv_sec);
 
-                    strncpy(buffer_file, "+OK\r\n", 5);
-                    memcpy(buffer_file + 5, &file_size, sizeof(int));
-                    memcpy(buffer_file + 9, &timestamp, sizeof(int));
+                    strncpy(buffer_informations, "+OK\r\n", 5);
+                    memcpy(buffer_informations + 5, &file_size, sizeof(int));
+                    memcpy(buffer_informations + 9, &timestamp, sizeof(int));
 
-                    Send(connection_socket, buffer_file,HEADER_LEN, 0);
+                    Send(connection_socket, buffer_informations,HEADER_LEN, 0);
                     if(sendfilemyprot(connection_socket,fd)<0){
                         fprintf(stdout,"Error in reading file, closing connection\n");
                         keep_conn_on=0;
@@ -192,15 +191,11 @@ int main (int argc, char *argv[])
                 Send(connection_socket, PROT_ERR_MSG, PROT_ERR_MSG_LEN, 0);
             }
 
-            //free the buffer, only if used. (E.G. Client could send only a quit request)
-            if (buffer_file != NULL) {
-                free(buffer_file);
-                buffer_file = NULL;
-            }
         }
         Close(connection_socket);
         }
 
+        Close(listening_socket);
 
     return 0;
 }

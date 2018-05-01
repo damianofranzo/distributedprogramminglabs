@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/lab2_2.dir/es22.c.o CMakeFiles/lab2_2.dir/home/danzio/Desktop/programmazione_distribuita/distributedprogramminglabs/lab2_dp1/sockwrap.c.o CMakeFiles/lab2_2.dir/home/danzio/Desktop/programmazione_distribuita/distributedprogramminglabs/lab2_dp1/errlib.c.o CMakeFiles/lab2_2.dir/circbuff.c.o  -o lab2_2 

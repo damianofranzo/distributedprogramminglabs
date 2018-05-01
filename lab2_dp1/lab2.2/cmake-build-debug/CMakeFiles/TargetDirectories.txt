@@ -1,0 +1,3 @@
+/home/danzio/Desktop/programmazione_distribuita/distributedprogramminglabs/lab2_dp1/lab2.2/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/danzio/Desktop/programmazione_distribuita/distributedprogramminglabs/lab2_dp1/lab2.2/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/danzio/Desktop/programmazione_distribuita/distributedprogramminglabs/lab2_dp1/lab2.2/cmake-build-debug/CMakeFiles/lab2_2.dir
