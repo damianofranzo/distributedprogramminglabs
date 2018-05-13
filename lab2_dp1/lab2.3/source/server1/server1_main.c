@@ -30,7 +30,6 @@
 #define SERV_ERR 1
 
 #define MYBUFSIZE 1400
-#define MYBUFSIZE2 1000
 #define MYFILENAMESIZE 150
 
 
@@ -63,7 +62,7 @@ int main (int argc, char *argv[])
     struct sockaddr_in saddr,caddr;
     socklen_t  caddrlen;
 
-    char buffer[MYBUFSIZE2];
+    char buffer[MYBUFSIZE];
     //int flag=1;
     flag=1;
     signal(SIGINT,ctrlCHandler);
@@ -132,7 +131,7 @@ int main (int argc, char *argv[])
         while (keep_conn_on) {
 
             //Wating messages from the client connected
-            request_size = (int) Recv(connection_socket, buffer, MYBUFSIZE2, 0);
+            request_size = (int) Recv(connection_socket, buffer, MYBUFSIZE, 0);
 
             //i inspect first character of the message, in order to get the type of comand
             mess = getmessage(buffer);
