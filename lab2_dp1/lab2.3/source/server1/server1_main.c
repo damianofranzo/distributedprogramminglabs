@@ -45,6 +45,12 @@ int getmessage(char *buffer);
 int getfilename(char *buf,char *filename,int request_size);
 int sendfilemyprot(int connSock,int fd);
 
+volatile int flag;
+void ctrlCHandler(int sig){
+    flag=0;
+    fprintf(stdout,"\nRequiring to quit, the connection will be closed after the last connection\n");
+}
+
 int main (int argc, char *argv[])
 {
     //checking the usage of the program
@@ -58,7 +64,9 @@ int main (int argc, char *argv[])
     socklen_t  caddrlen;
 
     char buffer[MYBUFSIZE2];
-    int flag=1;
+    //int flag=1;
+    flag=1;
+    signal(SIGINT,ctrlCHandler);
 
     //sockwrap.h has to know prog_name declared with extern
     prog_name=argv[0];
@@ -195,6 +203,7 @@ int main (int argc, char *argv[])
         Close(connection_socket);
         }
 
+        fprintf(stdout,"Required to quit, closing listening socket\n");
         Close(listening_socket);
 
     return 0;

@@ -113,7 +113,6 @@ int main (int argc, char *argv[])
                             fd=fopen(argv[i],"w+");
                             while(remaining>0){
                                 r=Recvfrom(sock, buffer, MYBUFFSIZE, 0, (struct sockaddr *) &from, &fromlen);
-                                printf("buffer %s\n",buffer);
                                 remaining-=r;
                                 fwrite(buffer,1,r,fd);
                             }
