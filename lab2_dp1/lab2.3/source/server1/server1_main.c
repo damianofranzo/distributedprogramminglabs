@@ -44,18 +44,20 @@ int getmessage(char *buffer);
 int getfilename(char *buf,char *filename,int request_size);
 int sendfilemyprot(int connSock,int fd);
 
-volatile int flag;
+volatile int flag,transfering;
 void ctrlCHandler(int sig){
+    if(transfering==0){
+        err_quit("\nRequiring to quit\n");
+    }
+    fprintf(stdout,"Waiting to complete Sending procedure\n");
     flag=0;
-    fprintf(stdout,"\nRequiring to quit, the connection will be closed after the last connection\n");
 }
 
 int main (int argc, char *argv[])
 {
     //checking the usage of the program
     if(argc!=2){
-        printf("Usage:program port\n");
-        return -1;
+        err_quit("Usage:program port\n");
     }
     int listening_socket,connection_socket;
     int port;
@@ -63,7 +65,6 @@ int main (int argc, char *argv[])
     socklen_t  caddrlen;
 
     char buffer[MYBUFSIZE];
-    //int flag=1;
     flag=1;
     signal(SIGINT,ctrlCHandler);
 
@@ -74,8 +75,8 @@ int main (int argc, char *argv[])
     port=atoi(argv[1]);
 
     //checking the correctness of the port
-    if(port>65536){
-        fprintf(stderr,"Error: Insert a correct port, it should be a number less then 65536\n");
+    if(port > 65536|| port < 0){
+        err_quit("Error: Insert a correct port, it should be a number less then 65536\n");
         return -1;
     }
 
@@ -85,13 +86,13 @@ int main (int argc, char *argv[])
     //assigning the sockaddr_in structure
     memset(&saddr,0,sizeof(saddr));
     saddr.sin_family = AF_INET;
-    saddr.sin_port = htons(((short)port));
-    saddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    saddr.sin_port = htons(((uint16_t)port));
+    saddr.sin_addr.s_addr = INADDR_ANY;
 
     //if the port was closed in a bad way, it should make the port reusable
     int enable = 1;
     if (setsockopt(listening_socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0)
-        printf("setsockopt(SO_REUSEADDR) failed\n");
+        fprintf(stderr,"setsockopt(SO_REUSEADDR) failed\n");
 
     Bind(listening_socket,(struct sockaddr*) &saddr, sizeof(saddr));
     fprintf(stdout, "Bind executed with success\n");
@@ -102,21 +103,23 @@ int main (int argc, char *argv[])
     //i can assume a request less than integer limit of byte
     int request_size;
 
-
     //variables to handle connection
     int mess,keep_conn_on = 1;
 
     //variables to handles file transfer
-    int fd,timestamp;
+    int fd;
     char filename[MYFILENAMESIZE];
     char buffer_informations[HEADER_LEN];
     struct stat fileinformation;
-    size_t file_size,total_size;
-
+    uint32_t file_size,timestamp;
+    //this variable indicate if there is trasfering
+    transfering=0;
 
     while(flag) {
+        transfering=0;
         //Waiting for client connections
         connection_socket = Accept(listening_socket, (struct sockaddr *) &caddr, &caddrlen);
+        transfering=1;
         if (connection_socket < -1) {
             fprintf(stderr,"Error in Accept function\n");
             continue;
@@ -154,8 +157,7 @@ int main (int argc, char *argv[])
                     }
 
                     //i allocate a buffer of the size of the first information (+okb1b2..)
-                    file_size = (size_t) fileinformation.st_size;
-                    total_size = file_size + 13;
+                    file_size =(uint32_t) fileinformation.st_size;
 
                     //Reading the file and sending it
                     fd = open(filename, O_RDONLY);
@@ -167,11 +169,11 @@ int main (int argc, char *argv[])
 
                     //changed in order to send correctly all the file for each mb
                     file_size = htonl(file_size);
-                    timestamp = htonl((int) fileinformation.st_mtim.tv_sec);
+                    timestamp = htonl((uint32_t) fileinformation.st_mtim.tv_sec);
 
                     strncpy(buffer_informations, "+OK\r\n", 5);
-                    memcpy(buffer_informations + 5, &file_size, sizeof(int));
-                    memcpy(buffer_informations + 9, &timestamp, sizeof(int));
+                    memcpy(buffer_informations + 5, &file_size, sizeof(uint32_t));
+                    memcpy(buffer_informations + 9, &timestamp, sizeof(uint32_t));
 
                     Send(connection_socket, buffer_informations,HEADER_LEN, 0);
                     if(sendfilemyprot(connection_socket,fd)<0){

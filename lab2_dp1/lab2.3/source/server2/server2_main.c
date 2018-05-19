@@ -10,6 +10,7 @@
 #include <netinet/in.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/wait.h>
 
 
 #include "../errlib.h"
@@ -50,6 +51,7 @@ void ctrlCHandler(int sig){
     fprintf(stdout,"\nRequiring to quit, the connection will be closed after the last connection\n");
 }
 
+static int n_child;
 
 int main (int argc, char *argv[])
 {
@@ -107,17 +109,20 @@ int main (int argc, char *argv[])
     int mess,keep_conn_on = 1;
 
     //variables to handles file transfer
-    int fd,timestamp;
+    int fd;
     char filename[MYFILENAMESIZE];
     char buffer_informations[HEADER_LEN];
     struct stat fileinformation;
-    size_t file_size,total_size;
+    size_t total_size;
+    uint32_t timestamp,file_size;
 
 
     while(flag) {
         //Waiting for client connections
         connection_socket = Accept(listening_socket, (struct sockaddr *) &caddr, &caddrlen);
         if (fork() == 0) {
+            n_child++;
+            Close(listening_socket);
             if (connection_socket < -1) {
                 fprintf(stderr, "Error in Accept function\n");
                 continue;
@@ -155,8 +160,7 @@ int main (int argc, char *argv[])
                         }
 
                         //i allocate a buffer of the size of the first information (+okb1b2..)
-                        file_size = (size_t) fileinformation.st_size;
-                        total_size = file_size + 13;
+                        file_size = (uint32_t) fileinformation.st_size;
 
                         //Reading the file and sending it
                         fd = open(filename, O_RDONLY);
@@ -168,7 +172,7 @@ int main (int argc, char *argv[])
 
                         //changed in order to send correctly all the file for each mb
                         file_size = htonl(file_size);
-                        timestamp = htonl((int) fileinformation.st_mtim.tv_sec);
+                        timestamp = htonl((uint32_t) fileinformation.st_mtim.tv_sec);
 
                         strncpy(buffer_informations, "+OK\r\n", 5);
                         memcpy(buffer_informations + 5, &file_size, sizeof(int));
@@ -201,17 +205,20 @@ int main (int argc, char *argv[])
 
             }
             Close(connection_socket);
+            n_child--;
             return 0;
         }
         else{
             fprintf(stdout,"Father waiting for new connections\n");
-            //temp
             Close(connection_socket);
         }
 
     }
 
-        Close(listening_socket);
+    Close(listening_socket);
+    for(int i=0;i<n_child;i++){
+        wait((void*)0);
+    }
 
     return 0;
 }
