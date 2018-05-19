@@ -50,14 +50,20 @@ int main (int argc, char *argv[])
 
     //to be used for programs
     prog_name = argv[0];
-    if(argc <3)
+    if(argc <= 3)
         err_quit("Usage: %s <dest_IP_add> <dest_port>\n", argv[0]);
 
     sock = Socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
     fprintf(stdout,"Socket created\n");
 
-    serverAddr.sin_family    = AF_INET;
-    serverAddr.sin_port      = htons((uint16_t) atoi(argv[2]));
+    //checking the correctness of the port
+    int port=atoi(argv[2]);
+    if(port>65535|| port < 0){
+        err_quit("Invalid port number\n",argv[0]);
+    }
+
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons((uint16_t)port);
     serverAddr.sin_addr.s_addr = inet_addr(argv[1]);
 
     Connect(sock, (struct sockaddr *) &serverAddr, sizeof(serverAddr));
@@ -65,11 +71,12 @@ int main (int argc, char *argv[])
 
     //variable to handle file tranfer
     size_t fileNameLength,totlength,filesize;
-    char buffer[MYBUFFSIZE],filename[50];
+    char buffer[MYBUFFSIZE];
     struct timeval tval;
     fd_set cset;
     FILE *fd;
-    int n,r,keep_conn_on=1,mess,remaining;
+    int n,mess;
+    size_t remaining,r;
 
     //for each file given from commandline i sent request and wait for response
     for(int i=3;i<argc;i++) {
@@ -86,7 +93,7 @@ int main (int argc, char *argv[])
             memcpy(buffer + GET_MSG_LEN, argv[i], fileNameLength);
             memcpy(buffer + GET_MSG_LEN + fileNameLength,END_MSG,END_MSG_SIZE);
 
-            fprintf(stdout, "Requesting file %.8s, length of name %d\n", buffer + 4, (int)fileNameLength);
+            fprintf(stdout, "Requesting file %.8s, length of name %d\n", argv[i], (int)fileNameLength);
             totlength = GET_MSG_LEN + fileNameLength + END_MSG_SIZE;
             Send(sock, buffer, totlength, 0);
 
@@ -97,7 +104,9 @@ int main (int argc, char *argv[])
             tval.tv_usec = 0;
 
             if ((n = select(FD_SETSIZE, &cset, NULL, NULL, &tval)) == -1) {
-                ("select() failed\n");
+                fprintf(stderr,"select() failed\n");
+                //if the served do not answer, don't send quit message
+                quit=0;
                 break;
             }
             if (n > 0) {
