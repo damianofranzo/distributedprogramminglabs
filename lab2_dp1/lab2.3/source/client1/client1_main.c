@@ -26,7 +26,7 @@
 #define ERR_MSG_LEN 6
 
 
-#define MYBUFFSIZE 1400
+#define MYBUFFSIZE 1500
 
 #define WAITING_TIME 30
 #define HEADER_LEN 13
@@ -43,7 +43,7 @@ int getMessage(char *buffer);
 int main (int argc, char *argv[])
 {
     //variable to handle connections
-    int sock,quit=1;
+    int sock;
     struct sockaddr_in serverAddr;
     socklen_t  fromlen;
     struct sockaddr_in from;
@@ -76,7 +76,12 @@ int main (int argc, char *argv[])
     fd_set cset;
     FILE *fd;
     int n,mess;
-    size_t remaining,r;
+    size_t remaining;
+    ssize_t r;
+
+    //if quit is set to 1, it means that the connection has no problem, if it's set to 1,
+    //the client just close the connection, because some problem happened
+    int quit=1;
 
     //for each file given from commandline i sent request and wait for response
     for(int i=3;i<argc;i++) {
@@ -89,11 +94,10 @@ int main (int argc, char *argv[])
 
             //preparing buffer message
             memcpy(buffer, GET_MSG, GET_MSG_LEN);
-            printf("buffer %s\n",buffer);
             memcpy(buffer + GET_MSG_LEN, argv[i], fileNameLength);
             memcpy(buffer + GET_MSG_LEN + fileNameLength,END_MSG,END_MSG_SIZE);
 
-            fprintf(stdout, "Requesting file %.8s, length of name %d\n", argv[i], (int)fileNameLength);
+            fprintf(stdout, "Requesting file %s, length of name %d\n", argv[i], (int)fileNameLength);
             totlength = GET_MSG_LEN + fileNameLength + END_MSG_SIZE;
             Send(sock, buffer, totlength, 0);
 
@@ -118,13 +122,21 @@ int main (int argc, char *argv[])
                             //get size and timestamp
                             filesize=getFileSize(buffer);
                             remaining=filesize;
-                            printf("Remaining: %d\n",(int)filesize);
                             fd=fopen(argv[i],"w+");
                             while(remaining>0){
                                 r=Recvfrom(sock, buffer, MYBUFFSIZE, 0, (struct sockaddr *) &from, &fromlen);
-                                remaining-=r;
+                                if(r==-1){
+                                    fprintf(stdout,"Error during receiving, closing connection\n");
+                                    quit=0;
+                                }
+                                /*ssize_t can represent also -1, but if it's not 1 it has
+                                  the same size of size_t
+                                 */
+                                remaining-=(size_t)r;
                                 fwrite(buffer,1,r,fd);
                             }
+                            if(quit!=0)
+                                fprintf(stdout,"File Received\n");
                             fclose(fd);
 
                             break;
@@ -147,14 +159,14 @@ int main (int argc, char *argv[])
 
 
             }
+            //dummy test
             else
                 fprintf(stderr, "No response from the server, closing connection");
         }
     }
-    //if no problem happened, send quit
+    //if no problems happened, send quit
     if(quit) Send(sock, QUIT_MSG, QUIT_MSG_LEN, 0);
     Close(sock);
-    //send quit
     return 0;
 }
 
