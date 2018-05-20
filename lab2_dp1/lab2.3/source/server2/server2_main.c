@@ -63,7 +63,7 @@ int main (int argc, char *argv[])
     int listening_socket,connection_socket;
     int port;
     struct sockaddr_in saddr,caddr;
-    socklen_t  caddrlen;
+    socklen_t  caddrlen=0;
 
     char buffer[MYBUFSIZE];
     flag=1;
