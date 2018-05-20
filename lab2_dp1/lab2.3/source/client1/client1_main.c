@@ -39,6 +39,7 @@ char *prog_name;
 
 size_t getFileSize(char *buffer);
 int getMessage(char *buffer);
+int receiveFile(int sock, char *buffer, FILE *fd,size_t size);
 
 int main (int argc, char *argv[])
 {
@@ -119,19 +120,9 @@ int main (int argc, char *argv[])
                         case PROT_GET:
                             //get size and timestamp
                             filesize=getFileSize(buffer);
-                            remaining=filesize;
-                            fd=fopen(argv[i],"w+");
-                            while(remaining>0){
-                                r=Recv(sock, buffer, MYBUFFSIZE, 0);
-                                if(r==-1){
-                                    fprintf(stdout,"Error during receiving, closing connection\n");
-                                    quit=0;
-                                }
-                                /*ssize_t can represent also -1, but if it's not 1 it has
-                                  the same size of size_t
-                                 */
-                                remaining-=(size_t)r;
-                                fwrite(buffer,1,r,fd);
+                            fd=fopen(argv[i],"w");
+                            if(receiveFile(sock,buffer,fd,filesize)<0){
+                                quit=0;
                             }
                             if(quit!=0)
                                 fprintf(stdout,"File Received\n");
@@ -166,6 +157,51 @@ int main (int argc, char *argv[])
     if(quit) Send(sock, QUIT_MSG, QUIT_MSG_LEN, 0);
     Close(sock);
     return 0;
+}
+
+
+int receiveFile(int sock, char *buffer, FILE *fd,size_t size){
+    fd_set cset;
+    struct timeval tval;
+    ssize_t remaining = size;
+    int n;
+    ssize_t r,w;
+
+
+    while(remaining>0){
+        FD_ZERO(&cset);
+        FD_SET(sock, &cset);
+
+        tval.tv_sec = WAITING_TIME;
+        tval.tv_usec = 0;
+
+        if ((n = select(FD_SETSIZE, &cset, NULL, NULL, &tval)) == -1) {
+            fprintf(stderr,"select() failed.\n");
+            return -1;
+        }
+        if(n>0){
+            r=Recv(sock, buffer, MYBUFFSIZE, 0);
+            if(r==-1){
+                fprintf(stderr,"Error during receiving, closing connection\n");
+                return SYS_ERR;
+            }
+            w=fwrite(buffer,1,(size_t)r,fd);
+            if(w!=r){
+                fprintf(stderr,"Error during writing, closing connection\n");
+                return SYS_ERR;
+            }
+            remaining-=r;
+        }
+        else{
+            fprintf(stderr,"No response after %d seconds\n",WAITING_TIME);
+        }
+    }
+    if(remaining < 0){
+        return SYS_ERR;
+    }
+
+    return 0;
+
 }
 
 int getMessage(char *buffer){
