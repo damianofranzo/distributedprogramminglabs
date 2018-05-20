@@ -87,7 +87,7 @@ int main (int argc, char *argv[])
     memset(&saddr,0,sizeof(saddr));
     saddr.sin_family = AF_INET;
     saddr.sin_port = htons(((uint16_t)port));
-    saddr.sin_addr.s_addr = INADDR_ANY;
+    saddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     //if the port was closed in a bad way, it should make the port reusable
     int enable = 1;

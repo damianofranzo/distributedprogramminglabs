@@ -45,8 +45,6 @@ int main (int argc, char *argv[])
     //variable to handle connections
     int sock;
     struct sockaddr_in serverAddr;
-    socklen_t  fromlen;
-    struct sockaddr_in from;
 
     //to be used for programs
     prog_name = argv[0];
@@ -115,7 +113,7 @@ int main (int argc, char *argv[])
             }
             if (n > 0) {
                 if (FD_ISSET(sock, &cset)) {
-                    Recvfrom(sock, buffer, HEADER_LEN, 0, (struct sockaddr *) &from, &fromlen);
+                    Recv(sock, buffer, HEADER_LEN, 0);
                     mess=getMessage(buffer);
                     switch(mess){
                         case PROT_GET:
@@ -124,7 +122,7 @@ int main (int argc, char *argv[])
                             remaining=filesize;
                             fd=fopen(argv[i],"w+");
                             while(remaining>0){
-                                r=Recvfrom(sock, buffer, MYBUFFSIZE, 0, (struct sockaddr *) &from, &fromlen);
+                                r=Recv(sock, buffer, MYBUFFSIZE, 0);
                                 if(r==-1){
                                     fprintf(stdout,"Error during receiving, closing connection\n");
                                     quit=0;

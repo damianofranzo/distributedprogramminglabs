@@ -175,8 +175,8 @@ int main (int argc, char *argv[])
                         timestamp = htonl((uint32_t) fileinformation.st_mtim.tv_sec);
 
                         strncpy(buffer_informations, "+OK\r\n", 5);
-                        memcpy(buffer_informations + 5, &file_size, sizeof(int));
-                        memcpy(buffer_informations + 9, &timestamp, sizeof(int));
+                        memcpy(buffer_informations + 5, &file_size, sizeof(uint32_t));
+                        memcpy(buffer_informations + 9, &timestamp, sizeof(uint32_t));
 
                         Send(connection_socket, buffer_informations, HEADER_LEN, 0);
                         if (sendfilemyprot(connection_socket, fd) < 0) {
