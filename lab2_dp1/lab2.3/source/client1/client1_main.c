@@ -75,10 +75,8 @@ int main (int argc, char *argv[])
     fd_set cset;
     FILE *fd;
     int n,mess;
-    size_t remaining;
-    ssize_t r;
 
-    //if quit is set to 1, it means that the connection has no problem, if it's set to 1,
+    //if quit is set to 1, it means that the connection has no problem, if it's set to 0,
     //the client just close the connection, because some problem happened
     int quit=1;
 
@@ -127,30 +125,37 @@ int main (int argc, char *argv[])
                             if(quit!=0)
                                 fprintf(stdout,"File Received\n");
                             fclose(fd);
-
                             break;
+
                         case PROT_ERR:
                             fprintf(stderr,"error prot\n");
                             quit=0;
                             break;
+
                         case SYS_ERR:
                             fprintf(stderr,"system error\n");
                             quit=0;
                             break;
+
                         default:
                             mess=PROT_ERR;
+                            quit=0;
+                            break;
 
                     }
                 }
-                else
+                else {
                     fprintf(stderr, "Error in select\n");
-
-
-
+                    quit=0;
+                }
             }
             //dummy test
-            else
+            else{
                 fprintf(stderr, "No response from the server, closing connection");
+                quit=0;
+            }
+            if(quit==0)
+                break;
         }
     }
     //if no problems happened, send quit
@@ -165,19 +170,19 @@ int receiveFile(int sock, char *buffer, FILE *fd,size_t size){
     struct timeval tval;
     ssize_t remaining = size;
     int n;
-    ssize_t r,w;
+    ssize_t r=0,w=0;
 
+    FD_ZERO(&cset);
+    FD_SET(sock, &cset);
 
     while(remaining>0){
-        FD_ZERO(&cset);
-        FD_SET(sock, &cset);
 
         tval.tv_sec = WAITING_TIME;
         tval.tv_usec = 0;
 
         if ((n = select(FD_SETSIZE, &cset, NULL, NULL, &tval)) == -1) {
             fprintf(stderr,"select() failed.\n");
-            return -1;
+            return SYS_ERR;
         }
         if(n>0){
             r=Recv(sock, buffer, MYBUFFSIZE, 0);
@@ -200,6 +205,7 @@ int receiveFile(int sock, char *buffer, FILE *fd,size_t size){
         return SYS_ERR;
     }
 
+    FD_CLR(sock,&cset);
     return 0;
 
 }

@@ -34,9 +34,6 @@
 
 
 #define HEADER_LEN 13
-/*To do:
- * good stdout
- * */
 
 char *prog_name;
 
@@ -191,6 +188,7 @@ int main (int argc, char *argv[])
                 default:
                     //mess is set to PROT_ERR
                     mess = PROT_ERR;
+                    break;
             }
 
             //if some errors happened
